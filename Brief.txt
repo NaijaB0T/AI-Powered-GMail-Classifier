@@ -1,0 +1,120 @@
+Project Title: MVP - "Inbox Clarity" - AI-Powered Gmail Email Classifier (Gemini Enhanced)
+1. Project Overview & Goal:
+We aim to develop a Minimum Viable Product (MVP) for a web application called "Inbox Clarity." The primary goal is to help users quickly understand the composition of their email inbox and save time by automatically classifying their emails. The application will connect to a user's Gmail account, read a limited number of recent emails, and categorize them using Google's Gemini API. This MVP will feature a freemium model with a daily processing limit for free users.
+2. Target Audience:
+Busy professionals, students, or anyone feeling overwhelmed by their email inbox who is looking for a simple, automated way to get a quick overview and begin organizing.
+3. Core Problem We're Solving:
+Users often have cluttered inboxes with a mix of important and unimportant emails. Manually sorting through them is time-consuming. "Inbox Clarity" will provide an automated first pass at categorization, offering a bird's-eye view of their email landscape.
+
+4. MVP Scope & Key Features:
+F1: User Authentication (Google OAuth):
+Users must be able to sign up/log in using their Google account (OAuth 2.0).
+Securely store access/refresh tokens for Gmail API access (e.g., in Supabase, encrypted).
+Request necessary permissions (scopes) for reading email metadata and content.
+Clear consent screen explaining what data will be accessed.
+F2: Gmail Integration & Email Fetching:
+Upon successful login and authorization, the application will fetch the last 100 emails from the user's primary Gmail inbox.
+For MVP, focus on fetching basic email data: Subject, Sender, Snippet (first ~100-160 characters of the body), Date. Full body content might be needed for effective Gemini classification.
+Indicate to the user that processing is happening.
+F3: Email Classification (Google Gemini API):
+Each fetched email (subject, sender, body snippet/full body) will be sent to the Google Gemini API for classification.
+The Gemini API will be prompted to classify the email into one of the following 8 predefined categories:
+Personal: Emails from friends, family, personal contacts.
+Work: Professional correspondence, project updates, company-wide emails.
+Bank/Finance: Statements, transaction alerts, financial updates.
+Promotions/Ads: Marketing emails, newsletters, sales offers.
+Notifications: System alerts, app notifications (non-social media), reminders.
+Travel: Flight confirmations, hotel bookings, rental car reservations.
+Shopping: Order confirmations, shipping updates, receipts from online purchases.
+Social Media: Notifications from Facebook, Instagram, Twitter, LinkedIn, etc.
+The backend will need to construct appropriate prompts for the Gemini API to ensure consistent and accurate categorization. Example prompt structure: "Classify the following email content into one of these categories: [List Categories]. Email Subject: '{subject}', Sender: '{sender}', Body Snippet: '{snippet}'. Respond with only the category name."
+Handle API responses, errors, and potential rate limits from the Gemini API.
+F4: Dashboard Display:
+A simple, clean dashboard will display the results.
+Show a count of emails belonging to each of the 8 categories from the processed batch.
+Display the total count of unread emails within the fetched 100 emails.
+F5: Freemium Model - Daily Limit:
+Free version users will have a daily limit of processing 100 emails per day.
+The system needs to track usage (e.g., in Supabase) and enforce this limit.
+Clearly communicate this limit to the user.
+5. User Stories (MVP):
+US1 (Auth): As a new user, I want to sign in with my Google account so I can securely connect my Gmail to the application.
+US2 (Auth): As a returning user, I want to be automatically logged in (or easily log in again) to access my dashboard.
+US3 (Email Fetch): As a logged-in user, I want the application to fetch my last 100 emails so they can be classified.
+US4 (Classification): As a user, I want my fetched emails to be automatically classified into predefined categories using Gemini so I can understand their nature.
+US5 (Dashboard): As a user, I want to see a simple dashboard showing the number of emails in each category and my unread email count (from the fetched batch) so I can quickly grasp my inbox status.
+US6 (Free Tier): As a free user, I want to understand that I can process up to 100 emails daily so I know the limitations of the free plan.
+US7 (Free Tier): As a free user, if I've reached my daily limit, I want to be informed and (optionally) see an upgrade prompt (for future premium features).
+6. Technical Stack & Configuration:
+Backend: Python (Flask framework)
+RESTful API design.
+Handle OAuth callbacks, token management.
+Interface with Gmail API.
+Interface with Google Gemini API for classification.
+Gemini API Key: AIzaSyDZ6vhb4K-SOkc9NKseRS88uO2dkfIV_VU
+SECURITY NOTE: This key MUST be stored as an environment variable (e.g., GEMINI_API_KEY) and NOT hardcoded in the source code. The developer will need to manage this securely.
+Manage user data and usage limits with Supabase.
+Frontend: React (Vite for build tooling)
+Component-based architecture.
+Consume backend APIs.
+Display login, dashboard, and category counts.
+User-friendly and responsive (basic responsiveness for desktop/mobile).
+Database/Storage: Supabase
+Project URL: https://avfcjiqouvxrsvoxnhxe.supabase.co
+Anon Public Key (for frontend): eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF2ZmNqaXFvdXZ4cnN2b3huaHhlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDgyNDM0NzAsImV4cCI6MjA2MzgxOTQ3MH0.EzXjgvUYEBYI0UoMvfCmsVDo8qtWkKGUt4i9fRjwFxA
+This key can be used in the frontend to initialize the Supabase client. Store as an environment variable (e.g., REACT_APP_SUPABASE_ANON_KEY or VITE_SUPABASE_ANON_KEY). This key should NOT be committed to Git if the repository is public, though it is a public key. Best practice is environment variables.
+Service Role Key (for backend ONLY): eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF2ZmNqaXFvdXZ4cnN2b3huaHhlIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0ODI0MzQ3MCwiZXhwIjoyMDYzODE5NDcwfQ.KT2lWSWXOkH7GECTQ6B-lZ6LIvKmG38H5OgOj219oQg
+CRITICAL SECURITY NOTE: This key grants full admin access to your Supabase project, bypassing RLS. It MUST ONLY be used in the secure backend environment (e.g., Flask app) and NEVER exposed to the frontend or committed to Git. Store as an environment variable (e.g., SUPABASE_SERVICE_ROLE_KEY).
+Schema:
+users table (likely managed by Supabase Auth, but for custom fields if needed: user_id (maps to Supabase auth.users.id), encrypted_refresh_token (for Gmail), last_processed_date, daily_processed_count).
+Potentially a table for classified_emails (user_id, email_id_from_gmail, category, timestamp) if results are to be stored, though for MVP this might be transient and processed on-the-fly.
+Authentication: Google APIs (OAuth 2.0)
+Utilize Google Client Libraries for Python/JavaScript. The developer will need to set up their own OAuth Client ID (525201106856-qtjst35qgdjaddtj4s0ep5b9nka3iv5l.apps.googleusercontent.com) and Client Secret (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) in Google Cloud Console and manage these securely as environment variables.
+Required Scopes: https://www.googleapis.com/auth/gmail.readonly, openid, email, profile.
+AI/NLP Classification: Google Gemini API (as detailed above). The backend will be responsible for constructing effective prompts.
+7. UX/UI Guidelines (MVP):
+Clean, minimalist, and intuitive design.
+Focus on clarity and ease of use.
+Single-page application feel if possible for the core experience post-login.
+Clear visual feedback during loading/processing states (e.g., "Fetching emails...", "Classifying emails...").
+No complex animations or heavy graphics.
+Basic responsiveness for usability on common desktop and mobile screen sizes.
+8. Freemium vs. Premium (MVP focuses on Free, but lays groundwork):
+Free Version (MVP):
+Login with Google.
+Read last 100 emails.
+Classify into 8 standard categories using Gemini.
+Simple dashboard.
+Daily limit of 100 emails processed.
+Premium Version (Future - for context, not MVP implementation):
+Unlimited email processing.
+Processing of entire inbox history (or larger batches).
+Customizable categories.
+Ability to create rules/filters.
+Option to automatically apply Gmail labels based on classification.
+Advanced analytics/reporting.
+Priority support.
+9. Non-Functional Requirements (MVP):
+Security:
+Secure storage of OAuth tokens (e.g., encrypted in Supabase using database encryption features or application-level encryption before storing).
+CRITICAL: Secure handling of all API keys (Google OAuth Client Secret, Gemini API Key, Supabase Service Role Key) using environment variables. NO hardcoding in source code. Emphasize this to the developer.
+Protection against common web vulnerabilities (XSS, CSRF, SQL Injection - though Supabase helps with the latter).
+All communication over HTTPS.
+Performance:
+Dashboard should ideally load within 3-5 seconds after email processing is complete.
+Email fetching and classification for 100 emails: This will involve up to 100 API calls to Gemini. Factor in this latency. The goal is to complete this process within a reasonable timeframe (e.g., under 1-2 minutes). Provide clear progress indicators to the user during this time (e.g., "Processed X of 100 emails"). Investigate if Gemini supports batching requests for classification tasks to improve efficiency; otherwise, sequential or carefully managed parallel requests will be needed.
+Error Handling:
+Graceful error handling for API failures (Gmail API, Gemini API, Supabase).
+User-friendly error messages (e.g., "Could not connect to Gmail. Please try again.", "Error classifying emails. Please try again later.", "Daily processing limit reached.").
+Backend logging for errors to aid debugging.
+Data Privacy:
+A basic Privacy Policy page/link should be present, stating what data is being accessed (email metadata, snippets/body for classification), how it's processed (sent to Google Gemini for classification), and stored (user account info, potentially classification results metadata in Supabase).
+No storing of email full body content long-term in Supabase unless explicitly required for a future feature and consented to by the user. For MVP, focus on transient processing of email content for classification.
+10. Future Considerations (Post-MVP):
+Processing more emails / entire inbox (will require robust background job processing).
+Allowing users to correct classifications to potentially fine-tune prompts or create a dataset for a custom model.
+Applying Gmail labels automatically based on classifications.
+Advanced filtering and search within classified emails (if results are stored).
+Exploring more sophisticated AI models or fine-tuning if Gemini proves insufficient for some categories.
+Desktop/Mobile app versions.
+Webhook integration for real-time email processing (instead of fetching last 100).
