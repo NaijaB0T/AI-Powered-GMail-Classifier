@@ -26,7 +26,8 @@ class Config:
     # Application Settings
     DAILY_FREE_LIMIT = int(os.environ.get('DAILY_FREE_LIMIT', '100'))
     MAX_EMAILS_PER_REQUEST = int(os.environ.get('MAX_EMAILS_PER_REQUEST', '100'))
-    
+    API_TIMEOUT = int(os.environ.get('API_TIMEOUT', '120')) # Default to 120 seconds
+
     # Email Categories
     EMAIL_CATEGORIES = [
         "Personal", "Work", "Bank/Finance", "Promotions/Ads", 

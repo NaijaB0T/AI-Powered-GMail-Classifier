@@ -13,10 +13,35 @@ from supabase.client import create_client, Client
 import logging
 from cryptography.fernet import Fernet
 import secrets
+from tenacity import retry, stop_after_attempt, wait_fixed, retry_if_exception_type, wait_exponential
+from google.api_core import exceptions
+import time
 
 # Load environment variables
 from dotenv import load_dotenv
 load_dotenv()
+
+# Custom wait strategy for ResourceExhausted errors
+def wait_exponential_from_exception(retry_state):
+    exc = retry_state.outcome.exception()
+    if isinstance(exc, exceptions.ResourceExhausted) and exc.details:
+        try:
+            # Attempt to parse the retry_delay from the exception details
+            # The details string format is like: "...retry_delay { seconds: 59 }..."
+            # This is a simple regex to extract the seconds value
+            import re
+            match = re.search(r"retry_delay {\s*seconds: (\d+)\s*}", str(exc.details))
+            if match:
+                delay = int(match.group(1))
+                logger.info(f"ResourceExhausted: Waiting for {delay} seconds before retrying.")
+                return delay
+        except Exception as e:
+            logger.warning(f"Could not parse retry_delay from exception details: {e}. Falling back to exponential wait.")
+    # Fallback to default exponential wait if delay not found or not ResourceExhausted
+    return wait_exponential(multiplier=1, min=4, max=60)(retry_state)
+
+# Import configuration
+from config import config
 
 # Allow insecure transport for OAuth 2 during local development
 # WARNING: Do NOT use this in production!
@@ -42,7 +67,7 @@ CORS(app, origins=['http://localhost:5173', 'http://localhost:5174', 'http://loc
 
 # Configuration from environment variables
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
-SUPABASE_URL = os.environ.get('SUPABASE_URL', 'https://avfcjiqouvxrsvoxnhxe.supabase.co')
+SUPABASE_URL = os.environ.get('SUPABASE_URL')
 SUPABASE_SERVICE_KEY = os.environ.get('SUPABASE_SERVICE_ROLE_KEY')
 GOOGLE_CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID')
 GOOGLE_CLIENT_SECRET = os.environ.get('GOOGLE_CLIENT_SECRET')
@@ -59,6 +84,10 @@ if not GEMINI_API_KEY:
 if not SUPABASE_SERVICE_KEY:
     logger.error("Missing required Supabase Service Key")
     raise ValueError("SUPABASE_SERVICE_KEY environment variable is required")
+
+if not SUPABASE_URL:
+    logger.error("Missing required Supabase URL")
+    raise ValueError("SUPABASE_URL environment variable is required")
 
 logger.info("Successfully loaded environment variables")
 import base64
@@ -95,54 +124,56 @@ CATEGORIES = [
 
 DAILY_FREE_LIMIT = 100
 
+# Get API timeout from config
+API_TIMEOUT = config['default'].API_TIMEOUT
+
 class EmailClassifier:
     def __init__(self):
         # Updated to use the current Gemini model
         self.model = genai.GenerativeModel('gemini-1.5-flash')  # Use gemini-1.5-flash instead of gemini-pro
     
+    @retry(
+        stop=stop_after_attempt(5), # Increased attempts for quota errors
+        wait=wait_exponential_from_exception, # Use custom wait strategy
+        retry=retry_if_exception_type(exceptions.ResourceExhausted) # Only retry on ResourceExhausted
+    )
     def classify_email(self, subject, sender, snippet):
-        """Classify email using Gemini API"""
-        try:
-            prompt = f"""
-            Classify the following email content into one of these categories: {', '.join(CATEGORIES)}.
-            
-            Email Subject: '{subject}'
-            Sender: '{sender}'
-            Body Snippet: '{snippet}'
-            
-            Categories:
-            - Personal: Emails from friends, family, personal contacts
-            - Work: Professional correspondence, project updates, company-wide emails
-            - Bank/Finance: Statements, transaction alerts, financial updates
-            - Promotions/Ads: Marketing emails, newsletters, sales offers
-            - Notifications: System alerts, app notifications (non-social media), reminders
-            - Travel: Flight confirmations, hotel bookings, rental car reservations
-            - Shopping: Order confirmations, shipping updates, receipts from online purchases
-            - Social Media: Notifications from Facebook, Instagram, Twitter, LinkedIn, etc.
-            
-            Respond with only the category name.
-            """
-            
-            # Log the email being classified
-            logger.info(f"Classifying email - Subject: {subject[:50]}, Sender: {sender[:50]}")
-            
-            response = self.model.generate_content(prompt)
-            category = response.text.strip()
-            
-            # Log Gemini's response
-            logger.info(f"Gemini response: '{category}'")
-            
-            # Validate category
-            if category in CATEGORIES:
-                return category
-            else:
-                # Log when defaulting
-                logger.warning(f"Invalid category '{category}' from Gemini, defaulting to Notifications")
-                return "Notifications"
-                
-        except Exception as e:
-            logger.error(f"Error classifying email: {e}")
-            logger.error(f"Subject: {subject}, Sender: {sender}")
+        """Classify email using Gemini API with retry logic and timeout"""
+        prompt = f"""
+        Classify the following email content into one of these categories: {', '.join(CATEGORIES)}.
+        
+        Email Subject: '{subject}'
+        Sender: '{sender}'
+        Body Snippet: '{snippet}'
+        
+        Categories:
+        - Personal: Emails from friends, family, personal contacts
+        - Work: Professional correspondence, project updates, company-wide emails
+        - Bank/Finance: Statements, transaction alerts, financial updates
+        - Promotions/Ads: Marketing emails, newsletters, sales offers
+        - Notifications: System alerts, app notifications (non-social media), reminders
+        - Travel: Flight confirmations, hotel bookings, rental car reservations
+        - Shopping: Order confirmations, shipping updates, receipts from online purchases
+        - Social Media: Notifications from Facebook, Instagram, Twitter, LinkedIn, etc.
+        
+        Respond with only the category name.
+        """
+        
+        # Log the email being classified
+        logger.info(f"Classifying email - Subject: {subject[:50]}, Sender: {sender[:50]}")
+        
+        response = self.model.generate_content(prompt, request_options={'timeout': API_TIMEOUT})
+        category = response.text.strip()
+        
+        # Log Gemini's response
+        logger.info(f"Gemini response: '{category}'")
+        
+        # Validate category
+        if category in CATEGORIES:
+            return category
+        else:
+            # Log when defaulting
+            logger.warning(f"Invalid category '{category}' from Gemini, defaulting to Notifications")
             return "Notifications"
 
 classifier = EmailClassifier()
@@ -406,6 +437,10 @@ def classify_emails():
         refresh_token = decrypt_token(session['refresh_token'])
         logger.info("Successfully decrypted refresh token")
         
+        # Create credentials from stored tokens
+        refresh_token = decrypt_token(session['refresh_token'])
+        logger.info("Successfully decrypted refresh token")
+        
         credentials = Credentials(
             token=None,  # We'll refresh to get a new access token
             refresh_token=refresh_token,
@@ -416,21 +451,40 @@ def classify_emails():
         
         # Refresh token to get access token
         logger.info("Refreshing credentials...")
-        credentials.refresh(Request())
-        logger.info("Successfully refreshed credentials")
+        try:
+            credentials.refresh(Request())
+            logger.info("Successfully refreshed credentials")
+        except Exception as e:
+            logger.error(f"Error refreshing credentials: {e}")
+            raise # Re-raise to be caught by outer try-except
         
-        # Build Gmail service
+        # Build Gmail service with a custom http object for timeout
         logger.info("Building Gmail service...")
+        # Import httplib2 and create a http object with timeout
         service = build('gmail', 'v1', credentials=credentials)
         logger.info("Gmail service built successfully")
         
+        @retry(stop=stop_after_attempt(3), wait=wait_fixed(2), retry=retry_if_exception_type(Exception))
+        def fetch_messages_with_retry():
+            logger.info("Fetching emails from Gmail with retry...")
+            return service.users().messages().list(
+                userId='me',
+                maxResults=100,
+                labelIds=['INBOX']
+            ).execute()
+
+        @retry(stop=stop_after_attempt(3), wait=wait_fixed(2), retry=retry_if_exception_type(Exception))
+        def get_message_with_retry(message_id):
+            logger.info(f"Getting message {message_id} with retry...")
+            return service.users().messages().get(
+                userId='me',
+                id=message_id,
+                format='metadata',
+                metadataHeaders=['Subject', 'From']
+            ).execute()
+
         # Fetch last 100 emails
-        logger.info("Fetching emails from Gmail...")
-        results = service.users().messages().list(
-            userId='me',
-            maxResults=100,
-            labelIds=['INBOX']
-        ).execute()
+        results = fetch_messages_with_retry()
         
         messages = results.get('messages', [])
         logger.info(f"Found {len(messages)} messages")
@@ -457,12 +511,7 @@ def classify_emails():
             try:
                 logger.info(f"Processing message {i+1}/{len(messages)}")
                 
-                msg = service.users().messages().get(
-                    userId='me',
-                    id=message['id'],
-                    format='metadata',
-                    metadataHeaders=['Subject', 'From']
-                ).execute()
+                msg = get_message_with_retry(message['id'])
                 
                 # Extract email data
                 headers = msg['payload'].get('headers', [])
@@ -498,6 +547,9 @@ def classify_emails():
                     
             except Exception as e:
                 logger.error(f"Error processing message {message['id']}: {e}")
+                # Log the full traceback for more detailed error information
+                import traceback
+                logger.error(f"Full traceback for message {message['id']}: {traceback.format_exc()}")
                 continue
         
         # Log sample emails for debugging
