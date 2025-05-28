@@ -110,7 +110,7 @@ VITE_SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY
 1.  **Create a new Supabase project**: Go to [Supabase](https://supabase.com/) and create a new project.
 2.  **Get your Supabase URL and Keys**:
     *   Navigate to `Project Settings` -> `API`.
-    *   Copy your `Project URL` (this is `YOUR_SUPABASE_URL`).
+    *   Copy your `Project URL` (e.g., `https://your-project-id.supabase.co`, this is `YOUR_SUPABASE_URL`).
     *   Copy your `service_role` key (this is `YOUR_SUPABASE_SERVICE_ROLE_KEY`).
     *   Copy your `anon` (public) key (this is `YOUR_SUPABASE_ANON_KEY`).
 3.  **Run the SQL schema**:

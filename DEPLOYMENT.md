@@ -42,7 +42,7 @@ sudo chown $USER:$USER /var/www/inbox-clarity
 ```bash
 # Clone repository
 cd /var/www/inbox-clarity
-git clone https://github.com/YOUR_USERNAME/inbox-clarity.git . # Replace with your forked repository URL
+git clone https://github.com/your-github-username/inbox-clarity.git . # Replace with your forked repository URL
 
 # Backend setup
 cd backend

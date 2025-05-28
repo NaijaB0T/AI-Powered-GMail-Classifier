@@ -6,7 +6,7 @@ class Config:
     """Base configuration class"""
     
     # Flask Configuration
-    SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev-secret-key-change-in-production'
+    SECRET_KEY = os.environ.get('SECRET_KEY') or 'YOUR_SECRET_KEY_DEFAULT'
     PERMANENT_SESSION_LIFETIME = timedelta(hours=24)
     
     # Google OAuth Configuration
@@ -17,7 +17,7 @@ class Config:
     GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
     
     # Supabase Configuration
-    SUPABASE_URL = os.environ.get('SUPABASE_URL', 'https://avfcjiqouvxrsvoxnhxe.supabase.co')
+    SUPABASE_URL = os.environ.get('SUPABASE_URL')
     SUPABASE_SERVICE_KEY = os.environ.get('SUPABASE_SERVICE_ROLE_KEY')
     
     # Security
