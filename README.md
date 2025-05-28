@@ -19,6 +19,32 @@ A web application that helps users understand their email inbox composition by a
 - **Real-time Processing**: Emails are classified on-demand
 - **Privacy-First**: Email content is processed but not stored long-term
 
+## Screenshots
+
+### Landing Page
+![Landing Page](images/landing-page.png)
+
+### Dashboard - Initial View
+![Dashboard - Initial View](images/dashboard-initial-view.png)
+
+### Dashboard - Categories
+![Dashboard - Categories](images/dashboard-categories.png)
+
+### Dashboard - Email Details
+![Dashboard - Email Details](images/dashboard-email-details.png)
+
+### Dashboard - Email Classification in Progress
+![Dashboard - Email Classification in Progress](images/dashboard-classification-in-progress.png)
+
+### Dashboard - Classified Emails
+![Dashboard - Classified Emails](images/dashboard-classified-emails.png)
+
+### Privacy Policy Page
+![Privacy Policy Page](images/privacy-policy-page.png)
+
+### OAuth Consent Screen
+![OAuth Consent Screen](images/oauth-consent-screen.png)
+
 ## Tech Stack
 
 - **Backend**: Flask, Google APIs, Supabase
